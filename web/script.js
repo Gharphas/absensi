@@ -299,6 +299,8 @@ function updateStats(summary) {
   document.getElementById('statTerlambat').textContent = summary.terlambat || 0;
   document.getElementById('statIzin').textContent = (summary.izin || 0) + (summary.sakit || 0);
   document.getElementById('statBelum').textContent = summary.belum_hadir || 0;
+  const statLemburEl = document.getElementById('statLembur');
+  if (statLemburEl) statLemburEl.textContent = summary.lembur || 0;
 }
 
 function renderAttendanceTable(list) {
@@ -313,7 +315,7 @@ function renderAttendanceTable(list) {
   );
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk kriteria ini.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk kriteria ini.</td></tr>';
     return;
   }
 
@@ -329,6 +331,14 @@ function renderAttendanceTable(list) {
       ? `<img class="table-photo-thumb" src="${photoSrc}" alt="Foto ${row.name}" title="Klik untuk melihat foto selfie" onclick="viewPhoto('${row.id}', 'in')" />`
       : `<span class="table-photo-empty" title="Tidak ada foto">👤</span>`;
 
+    const durationBadge = row.work_duration && row.work_duration !== '-'
+      ? `<span class="badge badge-duration">⏱️ ${row.work_duration}</span>`
+      : `<span style="color:#94a3b8">-</span>`;
+
+    const overtimeBadge = row.overtime && row.overtime !== '-'
+      ? `<span class="badge badge-overtime">🔥 ${row.overtime}</span>`
+      : `<span style="color:#94a3b8">-</span>`;
+
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td>${photoThumb}</td>
@@ -337,6 +347,8 @@ function renderAttendanceTable(list) {
       <td><span class="badge badge-dept">${row.department}</span></td>
       <td>${row.check_in || '-'}</td>
       <td>${row.check_out || '<span style="color:#94a3b8">Belum</span>'}</td>
+      <td>${durationBadge}</td>
+      <td>${overtimeBadge}</td>
       <td><span class="badge ${badgeClass}">${row.status}</span></td>
       <td>${row.notes || '-'}</td>
     `;
@@ -552,11 +564,11 @@ function exportToCSV() {
   }
 
   const dateVal = document.getElementById('filterDate').value;
-  let csv = 'No,NIP,Nama Karyawan,Departemen,Check-In,Check-Out,Status,Keterangan\n';
+  let csv = 'No,NIP,Nama Karyawan,Departemen,Check-In,Check-Out,Durasi Kerja,Lembur,Status,Keterangan\n';
 
   attendanceData.forEach((row, i) => {
     const cleanNotes = (row.notes || '').replace(/,/g, ' ');
-    csv += `${i + 1},${row.nip},"${row.name}","${row.department}",${row.check_in || '-'},${row.check_out || '-'},${row.status},"${cleanNotes}"\n`;
+    csv += `${i + 1},${row.nip},"${row.name}","${row.department}",${row.check_in || '-'},${row.check_out || '-'},"${row.work_duration || '-'}","${row.overtime || '-'}",${row.status},"${cleanNotes}"\n`;
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

@@ -251,6 +251,7 @@ body {
 .icon-terlambat { background: var(--warning-light); }
 .icon-izin { background: var(--info-light); }
 .icon-belum { background: var(--danger-light); }
+.icon-lembur { background: #fdf4ff; color: #a855f7; }
 
 .stat-info .stat-label {
   font-size: 0.8rem;
@@ -758,6 +759,18 @@ body {
 .badge-sakit {
   background: #fce7f3;
   color: #9d174d;
+}
+
+.badge-overtime {
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-weight: 700;
+}
+
+.badge-duration {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
 }
 
 .badge-dept {

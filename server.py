@@ -4,7 +4,7 @@ import json
 import sqlite3
 import os
 import sys
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from urllib.parse import urlparse, parse_qs
 
 PORT = 5000
@@ -44,13 +44,17 @@ def init_db():
     )
     """)
 
-    # Migrasi otomatis kolom foto jika tabel sudah ada sebelumnya
+    # Migrasi otomatis kolom foto, durasi kerja, dan lembur jika tabel sudah ada sebelumnya
     cursor.execute("PRAGMA table_info(attendance)")
     existing_cols = [col[1] for col in cursor.fetchall()]
     if "photo_in" not in existing_cols:
         cursor.execute("ALTER TABLE attendance ADD COLUMN photo_in TEXT")
     if "photo_out" not in existing_cols:
         cursor.execute("ALTER TABLE attendance ADD COLUMN photo_out TEXT")
+    if "work_duration" not in existing_cols:
+        cursor.execute("ALTER TABLE attendance ADD COLUMN work_duration TEXT")
+    if "overtime" not in existing_cols:
+        cursor.execute("ALTER TABLE attendance ADD COLUMN overtime TEXT")
 
     # Seed data default jika masih kosong
     cursor.execute("SELECT COUNT(*) FROM employees")
@@ -84,6 +88,49 @@ def init_db():
 
 # Pastikan DB selalu terinisialisasi saat server.py dimuat
 init_db()
+
+def calculate_duration_and_overtime(check_in_str, check_out_str):
+    """
+    Menghitung durasi kerja dan jam lembur (overtime setelah jam 17:00:00).
+    Format input: 'HH:MM:SS'
+    Return: (work_duration_str, overtime_str)
+    """
+    if not check_in_str or not check_out_str:
+        return "-", "-"
+
+    try:
+        t_in = datetime.strptime(check_in_str, "%H:%M:%S")
+        t_out = datetime.strptime(check_out_str, "%H:%M:%S")
+
+        if t_out < t_in:
+            t_out += timedelta(days=1)
+
+        diff = t_out - t_in
+        total_seconds = int(diff.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+
+        work_duration = f"{hours} Jam {minutes} Menit" if minutes > 0 else f"{hours} Jam"
+
+        # Hitung Lembur: jam pulang kantor standar = 17:00:00
+        standard_end = datetime.strptime("17:00:00", "%H:%M:%S")
+        if t_out > standard_end:
+            ot_diff = t_out - standard_end
+            ot_seconds = int(ot_diff.total_seconds())
+            ot_hours = ot_seconds // 3600
+            ot_minutes = (ot_seconds % 3600) // 60
+            if ot_hours > 0 and ot_minutes > 0:
+                overtime = f"{ot_hours} Jam {ot_minutes} Menit"
+            elif ot_hours > 0:
+                overtime = f"{ot_hours} Jam"
+            else:
+                overtime = f"{ot_minutes} Menit"
+        else:
+            overtime = "-"
+
+        return work_duration, overtime
+    except Exception:
+        return "-", "-"
 
 class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -129,7 +176,7 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
             query_sql = """
                 SELECT a.id, a.employee_id, e.nip, e.name, e.department, e.role,
                        a.date, a.check_in, a.check_out, a.status, a.notes,
-                       a.photo_in, a.photo_out
+                       a.photo_in, a.photo_out, a.work_duration, a.overtime
                 FROM attendance a
                 JOIN employees e ON a.employee_id = e.id
                 WHERE a.date = ?
@@ -145,7 +192,8 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                     SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
                     SUM(CASE WHEN status = 'Terlambat' THEN 1 ELSE 0 END) as terlambat,
                     SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-                    SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit
+                    SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+                    SUM(CASE WHEN overtime IS NOT NULL AND overtime != '-' THEN 1 ELSE 0 END) as lembur
                 FROM attendance
                 WHERE date = ?
             """, (target_date,))
@@ -253,13 +301,26 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self._send_json(400, {"success": False, "message": f"Karyawan sudah Check-Out pada {row[2]}"})
 
-            cursor.execute("UPDATE attendance SET check_out = ?, photo_out = ? WHERE id = ?", (time_str, photo, row[0]))
+            check_in_time = row[1]
+            work_duration, overtime = calculate_duration_and_overtime(check_in_time, time_str)
+
+            cursor.execute("""
+                UPDATE attendance 
+                SET check_out = ?, photo_out = ?, work_duration = ?, overtime = ? 
+                WHERE id = ?
+            """, (time_str, photo, work_duration, overtime, row[0]))
             conn.commit()
             conn.close()
 
+            ot_msg = f" (Lembur: {overtime})" if overtime != "-" else ""
             return self._send_json(200, {
                 "success": True,
-                "message": f"Check-Out berhasil dicatat pada {time_str}"
+                "message": f"Check-Out berhasil ({time_str})! Durasi Kerja: {work_duration}{ot_msg}",
+                "data": {
+                    "check_out": time_str,
+                    "work_duration": work_duration,
+                    "overtime": overtime
+                }
             })
 
         elif path == "/api/employees":
