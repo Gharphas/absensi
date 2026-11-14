@@ -141,6 +141,41 @@
                 <input type="text" id="absenNotes" placeholder="Contoh: Sakit flu, tugas dinas luar, dll.">
               </div>
 
+              <!-- VERIFIKASI KAMERA / WEBCAM -->
+              <div class="form-group camera-form-group">
+                <div class="camera-header-row">
+                  <label>📸 Verifikasi Wajah (Foto Selfie):</label>
+                  <span class="camera-badge" id="cameraStatusBadge">Kamera Non-Aktif</span>
+                </div>
+
+                <div class="camera-container" id="cameraContainer">
+                  <video id="videoPreview" autoplay playsinline muted></video>
+                  <img id="photoSnapshot" alt="Snapshot" style="display: none;">
+                  
+                  <div class="camera-overlay" id="cameraOverlay" style="display: none;">
+                    <div class="face-target"></div>
+                    <p class="camera-hint">Posisikan wajah Anda di dalam lingkaran</p>
+                  </div>
+
+                  <div class="camera-placeholder" id="cameraPlaceholder">
+                    <span class="cam-icon">📷</span>
+                    <p>Kamera belum aktif</p>
+                    <small>Klik tombol di bawah untuk menyalakan kamera selfie</small>
+                  </div>
+                </div>
+
+                <canvas id="cameraCanvas" style="display: none;"></canvas>
+
+                <div class="camera-controls">
+                  <button type="button" class="btn btn-camera" id="btnToggleCamera">
+                    <span>📷 Nyalakan Kamera</span>
+                  </button>
+                  <button type="button" class="btn btn-outline" id="btnRetakePhoto" style="display: none;">
+                    <span>🔄 Foto Ulang</span>
+                  </button>
+                </div>
+              </div>
+
               <div class="form-actions-dual">
                 <button type="submit" class="btn btn-primary" id="btnCheckIn">
                   <span>📥 Check-In Masuk</span>
@@ -197,6 +232,7 @@
               <thead>
                 <tr>
                   <th>No</th>
+                  <th>Foto Bukti</th>
                   <th>NIP</th>
                   <th>Nama Karyawan</th>
                   <th>Divisi</th>
@@ -208,7 +244,7 @@
               </thead>
               <tbody id="attendanceTbody">
                 <tr>
-                  <td colspan="8" class="text-center py-4">Memuat data absensi...</td>
+                  <td colspan="9" class="text-center py-4">Memuat data absensi...</td>
                 </tr>
               </tbody>
             </table>
@@ -288,6 +324,22 @@
           <button type="submit" class="btn btn-primary" id="btnSaveEmployee">💾 Simpan Karyawan</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL LIHAT FOTO -->
+  <div class="modal-backdrop" id="photoModal">
+    <div class="modal-box photo-modal-box">
+      <div class="modal-header">
+        <h3 id="photoModalTitle">Bukti Foto Absensi</h3>
+        <button class="btn-close" id="btnClosePhotoModal">&times;</button>
+      </div>
+      <div class="photo-modal-body">
+        <div class="photo-display-container">
+          <img id="photoModalImg" src="" alt="Bukti Foto">
+        </div>
+        <div class="photo-modal-meta" id="photoModalMeta"></div>
+      </div>
     </div>
   </div>
 

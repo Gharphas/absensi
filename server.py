@@ -38,9 +38,19 @@ def init_db():
         check_out TEXT,
         status TEXT NOT NULL, -- Hadir, Izin, Sakit, Terlambat
         notes TEXT,
+        photo_in TEXT,
+        photo_out TEXT,
         FOREIGN KEY (employee_id) REFERENCES employees(id)
     )
     """)
+
+    # Migrasi otomatis kolom foto jika tabel sudah ada sebelumnya
+    cursor.execute("PRAGMA table_info(attendance)")
+    existing_cols = [col[1] for col in cursor.fetchall()]
+    if "photo_in" not in existing_cols:
+        cursor.execute("ALTER TABLE attendance ADD COLUMN photo_in TEXT")
+    if "photo_out" not in existing_cols:
+        cursor.execute("ALTER TABLE attendance ADD COLUMN photo_out TEXT")
 
     # Seed data default jika masih kosong
     cursor.execute("SELECT COUNT(*) FROM employees")
@@ -118,7 +128,8 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
             cursor = conn.cursor()
             query_sql = """
                 SELECT a.id, a.employee_id, e.nip, e.name, e.department, e.role,
-                       a.date, a.check_in, a.check_out, a.status, a.notes
+                       a.date, a.check_in, a.check_out, a.status, a.notes,
+                       a.photo_in, a.photo_out
                 FROM attendance a
                 JOIN employees e ON a.employee_id = e.id
                 WHERE a.date = ?
@@ -178,6 +189,7 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
             emp_id = payload.get("employee_id")
             notes = payload.get("notes", "")
             status_override = payload.get("status") # optional: Izin, Sakit
+            photo = payload.get("photo", None) # Base64 Image
             now = datetime.now()
             today_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
@@ -205,9 +217,9 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                 check_in_time = time_str
 
             cursor.execute("""
-                INSERT INTO attendance (employee_id, date, check_in, status, notes)
-                VALUES (?, ?, ?, ?, ?)
-            """, (emp_id, today_str, check_in_time, status, notes))
+                INSERT INTO attendance (employee_id, date, check_in, status, notes, photo_in)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (emp_id, today_str, check_in_time, status, notes, photo))
             conn.commit()
             new_id = cursor.lastrowid
             conn.close()
@@ -220,6 +232,7 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/attendance/check-out":
             emp_id = payload.get("employee_id")
+            photo = payload.get("photo", None)
             now = datetime.now()
             today_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
@@ -240,7 +253,7 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self._send_json(400, {"success": False, "message": f"Karyawan sudah Check-Out pada {row[2]}"})
 
-            cursor.execute("UPDATE attendance SET check_out = ? WHERE id = ?", (time_str, row[0]))
+            cursor.execute("UPDATE attendance SET check_out = ?, photo_out = ? WHERE id = ?", (time_str, photo, row[0]))
             conn.commit()
             conn.close()
 

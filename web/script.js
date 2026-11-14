@@ -3,10 +3,16 @@ let employees = [];
 let attendanceData = [];
 let currentTab = 'dashboard';
 
+// State Kamera WebCam
+let mediaStream = null;
+let currentCapturedPhoto = null;
+let isCameraActive = false;
+
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
   initNavigation();
   initFilterDate();
+  initCamera();
   loadEmployees();
   loadAttendance();
   setupEventListeners();
@@ -72,7 +78,157 @@ function initFilterDate() {
   });
 }
 
-// 4. LOAD EMPLOYEES
+// 4. WEBCAM / KAMERA SELFIE
+function initCamera() {
+  const btnToggle = document.getElementById('btnToggleCamera');
+  const btnRetake = document.getElementById('btnRetakePhoto');
+
+  btnToggle.addEventListener('click', toggleCamera);
+  btnRetake.addEventListener('click', retakePhoto);
+}
+
+async function toggleCamera() {
+  if (isCameraActive) {
+    stopCamera();
+  } else {
+    await startCamera();
+  }
+}
+
+async function startCamera() {
+  const video = document.getElementById('videoPreview');
+  const placeholder = document.getElementById('cameraPlaceholder');
+  const overlay = document.getElementById('cameraOverlay');
+  const badge = document.getElementById('cameraStatusBadge');
+  const btnToggle = document.getElementById('btnToggleCamera');
+  const photoSnapshot = document.getElementById('photoSnapshot');
+  const btnRetake = document.getElementById('btnRetakePhoto');
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        facingMode: 'user'
+      },
+      audio: false
+    });
+
+    video.srcObject = mediaStream;
+    video.style.display = 'block';
+    photoSnapshot.style.display = 'none';
+    placeholder.style.display = 'none';
+    overlay.style.display = 'flex';
+    btnRetake.style.display = 'none';
+
+    badge.textContent = '🟢 Kamera Aktif';
+    badge.className = 'camera-badge active';
+    btnToggle.innerHTML = '<span>⏹️ Matikan Kamera</span>';
+    isCameraActive = true;
+    currentCapturedPhoto = null;
+  } catch (err) {
+    showToast('Izin kamera ditolak atau kamera tidak ditemukan: ' + err.message, 'error');
+  }
+}
+
+function stopCamera() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  const video = document.getElementById('videoPreview');
+  const placeholder = document.getElementById('cameraPlaceholder');
+  const overlay = document.getElementById('cameraOverlay');
+  const badge = document.getElementById('cameraStatusBadge');
+  const btnToggle = document.getElementById('btnToggleCamera');
+  const photoSnapshot = document.getElementById('photoSnapshot');
+  const btnRetake = document.getElementById('btnRetakePhoto');
+
+  video.srcObject = null;
+  video.style.display = 'none';
+  overlay.style.display = 'none';
+
+  if (!currentCapturedPhoto) {
+    placeholder.style.display = 'flex';
+    photoSnapshot.style.display = 'none';
+    badge.textContent = 'Kamera Non-Aktif';
+    badge.className = 'camera-badge';
+  }
+  btnToggle.innerHTML = '<span>📷 Nyalakan Kamera</span>';
+  btnRetake.style.display = currentCapturedPhoto ? 'inline-flex' : 'none';
+  isCameraActive = false;
+}
+
+function captureSnapshot() {
+  // Jika sudah pernah capture dan kamera mati, gunakan foto yang tersimpan
+  if (!isCameraActive && currentCapturedPhoto) {
+    return currentCapturedPhoto;
+  }
+
+  // Jika kamera tidak aktif sama sekali
+  if (!isCameraActive) {
+    return null;
+  }
+
+  const video = document.getElementById('videoPreview');
+  const canvas = document.getElementById('cameraCanvas');
+  const photoSnapshot = document.getElementById('photoSnapshot');
+  const overlay = document.getElementById('cameraOverlay');
+  const badge = document.getElementById('cameraStatusBadge');
+  const btnRetake = document.getElementById('btnRetakePhoto');
+
+  // Skala resolusi kompak untuk performa & hemat penyimpanan
+  const width = 480;
+  const height = video.videoHeight ? Math.round((video.videoHeight / video.videoWidth) * width) : 360;
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  // Cerminkan foto agar natural seperti di cermin preview
+  ctx.translate(width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, width, height);
+
+  // Kompresi JPEG Base64
+  currentCapturedPhoto = canvas.toDataURL('image/jpeg', 0.82);
+
+  // Tampilkan hasil snapshot
+  photoSnapshot.src = currentCapturedPhoto;
+  photoSnapshot.style.display = 'block';
+  video.style.display = 'none';
+  overlay.style.display = 'none';
+
+  badge.textContent = '📸 Foto Terambil';
+  badge.className = 'camera-badge captured';
+  btnRetake.style.display = 'inline-flex';
+
+  // Hentikan stream kamera aktif agar hemat baterai
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  isCameraActive = false;
+  document.getElementById('btnToggleCamera').innerHTML = '<span>📷 Nyalakan Kamera</span>';
+
+  return currentCapturedPhoto;
+}
+
+function retakePhoto() {
+  currentCapturedPhoto = null;
+  startCamera();
+}
+
+function resetCameraUI() {
+  currentCapturedPhoto = null;
+  stopCamera();
+  document.getElementById('photoSnapshot').style.display = 'none';
+  document.getElementById('cameraPlaceholder').style.display = 'flex';
+  document.getElementById('btnRetakePhoto').style.display = 'none';
+  document.getElementById('cameraStatusBadge').textContent = 'Kamera Non-Aktif';
+  document.getElementById('cameraStatusBadge').className = 'camera-badge';
+}
+
+// 5. LOAD EMPLOYEES
 async function loadEmployees() {
   try {
     const res = await fetch('/api/employees');
@@ -120,7 +276,7 @@ function renderEmployeeTable() {
   });
 }
 
-// 5. LOAD ATTENDANCE
+// 6. LOAD ATTENDANCE
 async function loadAttendance(dateStr) {
   const targetDate = dateStr || document.getElementById('filterDate').value;
   try {
@@ -157,7 +313,7 @@ function renderAttendanceTable(list) {
   );
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk kriteria ini.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk kriteria ini.</td></tr>';
     return;
   }
 
@@ -168,8 +324,14 @@ function renderAttendanceTable(list) {
     else if (row.status === 'Izin') badgeClass = 'badge-izin';
     else if (row.status === 'Sakit') badgeClass = 'badge-sakit';
 
+    const photoSrc = row.photo_in || row.photo_out;
+    const photoThumb = photoSrc 
+      ? `<img class="table-photo-thumb" src="${photoSrc}" alt="Foto ${row.name}" title="Klik untuk melihat foto selfie" onclick="viewPhoto('${row.id}', 'in')" />`
+      : `<span class="table-photo-empty" title="Tidak ada foto">👤</span>`;
+
     tr.innerHTML = `
       <td>${i + 1}</td>
+      <td>${photoThumb}</td>
       <td><strong>${row.nip}</strong></td>
       <td>${row.name}</td>
       <td><span class="badge badge-dept">${row.department}</span></td>
@@ -182,8 +344,44 @@ function renderAttendanceTable(list) {
   });
 }
 
-// 6. EVENT LISTENERS
+// 7. VIEW PHOTO MODAL
+window.viewPhoto = function(attendanceId, type) {
+  const item = attendanceData.find(a => String(a.id) === String(attendanceId));
+  if (!item) return;
+
+  const photoSrc = type === 'out' && item.photo_out ? item.photo_out : item.photo_in;
+  if (!photoSrc) {
+    showToast('Foto tidak tersedia', 'info');
+    return;
+  }
+
+  const modal = document.getElementById('photoModal');
+  const img = document.getElementById('photoModalImg');
+  const meta = document.getElementById('photoModalMeta');
+  const title = document.getElementById('photoModalTitle');
+
+  title.textContent = `Bukti Selfie: ${item.name}`;
+  img.src = photoSrc;
+  meta.innerHTML = `
+    <strong>${item.name}</strong> (${item.nip})<br>
+    Divisi: <b>${item.department}</b> | Status: <b>${item.status}</b><br>
+    Jam Presensi: <b>${item.check_in || item.check_out || '-'}</b>
+  `;
+  modal.classList.add('show');
+};
+
+// 8. EVENT LISTENERS
 function setupEventListeners() {
+  // Modal Foto Close
+  document.getElementById('btnClosePhotoModal').addEventListener('click', () => {
+    document.getElementById('photoModal').classList.remove('show');
+  });
+  document.getElementById('photoModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('photoModal')) {
+      document.getElementById('photoModal').classList.remove('show');
+    }
+  });
+
   // Check-In Form Submit
   document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -196,6 +394,9 @@ function setupEventListeners() {
       return;
     }
 
+    // Ambil foto selfie dari kamera jika aktif / sudah di-capture
+    const photoData = captureSnapshot();
+
     try {
       const res = await fetch('/api/attendance/check-in', {
         method: 'POST',
@@ -203,13 +404,15 @@ function setupEventListeners() {
         body: JSON.stringify({
           employee_id: empId,
           status: type,
-          notes: notes
+          notes: notes,
+          photo: photoData
         })
       });
       const result = await res.json();
       if (result.success) {
         showToast(result.message, 'success');
         document.getElementById('absenNotes').value = '';
+        resetCameraUI();
         loadAttendance();
       } else {
         showToast(result.message, 'error');
@@ -227,15 +430,22 @@ function setupEventListeners() {
       return;
     }
 
+    // Ambil foto selfie kepulangan
+    const photoData = captureSnapshot();
+
     try {
       const res = await fetch('/api/attendance/check-out', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: empId })
+        body: JSON.stringify({ 
+          employee_id: empId,
+          photo: photoData
+        })
       });
       const result = await res.json();
       if (result.success) {
         showToast(result.message, 'success');
+        resetCameraUI();
         loadAttendance();
       } else {
         showToast(result.message, 'error');
@@ -253,7 +463,6 @@ function setupEventListeners() {
   // Modal Tambah Karyawan
   const modal = document.getElementById('employeeModal');
   const openModal = () => {
-    // Generate rekomendasi NIP berikutnya
     const nextNum = employees.length + 1;
     const suggestedNIP = `EMP${String(nextNum).padStart(3, '0')}`;
     const nipInput = document.getElementById('empNIP');
@@ -277,7 +486,6 @@ function setupEventListeners() {
   document.getElementById('btnCloseModal').addEventListener('click', closeModal);
   document.getElementById('btnCancelModal').addEventListener('click', closeModal);
 
-  // Klik di luar box modal untuk menutup
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
   });
@@ -315,7 +523,6 @@ function setupEventListeners() {
         document.getElementById('addEmployeeForm').reset();
         await loadEmployees();
         
-        // Otomatis pilih karyawan baru di dropdown form absensi
         if (result.data && result.data.id) {
           const select = document.getElementById('selectEmployee');
           if (select) select.value = result.data.id;
@@ -337,7 +544,7 @@ function setupEventListeners() {
   document.getElementById('btnExportCSV').addEventListener('click', exportToCSV);
 }
 
-// 7. EXPORT CSV
+// 9. EXPORT CSV
 function exportToCSV() {
   if (attendanceData.length === 0) {
     showToast('Tidak ada data untuk diexport', 'error');
@@ -363,7 +570,7 @@ function exportToCSV() {
   showToast('File CSV berhasil diunduh!', 'success');
 }
 
-// 8. TOAST NOTIFICATION
+// 10. TOAST NOTIFICATION
 let toastTimer = null;
 function showToast(msg, type = 'info') {
   const toast = document.getElementById('toast');
