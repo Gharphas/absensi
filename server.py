@@ -364,6 +364,12 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                 }
             })
 
+        elif path in ["/api/employees/edit", "/api/employees/update"]:
+            return self._handle_edit_employee(payload)
+
+        elif path in ["/api/employees/delete", "/api/employees/remove"]:
+            return self._handle_delete_employee(payload)
+
         elif path == "/api/employees":
             name = (payload.get("name") or "").strip()
             nip = (payload.get("nip") or "").strip().upper()
@@ -415,6 +421,111 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
                 conn.close()
                 return self._send_json(500, {"success": False, "message": f"Terjadi kesalahan database: {str(e)}"})
 
+        return self._send_json(404, {"success": False, "message": "Endpoint tidak ditemukan"})
+
+    def _handle_edit_employee(self, payload):
+        emp_id = payload.get("id")
+        name = (payload.get("name") or "").strip()
+        nip = (payload.get("nip") or "").strip().upper()
+        role = (payload.get("role") or "Staf").strip()
+        dept = (payload.get("department") or "Umum").strip()
+        status = (payload.get("status") or "Aktif").strip()
+
+        if not emp_id:
+            return self._send_json(400, {"success": False, "message": "ID Karyawan wajib disertakan!"})
+        if not name:
+            return self._send_json(400, {"success": False, "message": "Nama karyawan tidak boleh kosong!"})
+        if not nip:
+            return self._send_json(400, {"success": False, "message": "NIP tidak boleh kosong!"})
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        # Pastikan NIP tidak digunakan karyawan lain
+        cursor.execute("SELECT id FROM employees WHERE nip = ? AND id != ?", (nip, emp_id))
+        if cursor.fetchone():
+            conn.close()
+            return self._send_json(400, {"success": False, "message": f"NIP '{nip}' sudah digunakan oleh karyawan lain!"})
+
+        try:
+            cursor.execute("""
+                UPDATE employees 
+                SET nip = ?, name = ?, role = ?, department = ?, status = ?
+                WHERE id = ?
+            """, (nip, name, role, dept, status, emp_id))
+            conn.commit()
+            conn.close()
+            return self._send_json(200, {
+                "success": True,
+                "message": f"Data karyawan '{name}' berhasil diperbarui!"
+            })
+        except Exception as e:
+            conn.close()
+            return self._send_json(500, {"success": False, "message": f"Gagal memperbarui karyawan: {str(e)}"})
+
+    def _handle_delete_employee(self, payload):
+        emp_id = payload.get("id")
+        if not emp_id:
+            return self._send_json(400, {"success": False, "message": "ID Karyawan wajib disertakan!"})
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM employees WHERE id = ?", (emp_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return self._send_json(404, {"success": False, "message": "Karyawan tidak ditemukan!"})
+
+        emp_name = row[0]
+
+        try:
+            # Hapus data absensi terkait terlebih dahulu
+            cursor.execute("DELETE FROM attendance WHERE employee_id = ?", (emp_id,))
+            # Hapus data karyawan
+            cursor.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
+            conn.commit()
+            conn.close()
+            return self._send_json(200, {
+                "success": True,
+                "message": f"Karyawan '{emp_name}' dan riwayat absensinya berhasil dihapus!"
+            })
+        except Exception as e:
+            conn.close()
+            return self._send_json(500, {"success": False, "message": f"Gagal menghapus karyawan: {str(e)}"})
+
+    def do_PUT(self):
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip('/')
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+        try:
+            payload = json.loads(body)
+        except Exception:
+            payload = {}
+
+        if path == "/api/employees":
+            return self._handle_edit_employee(payload)
+        return self._send_json(404, {"success": False, "message": "Endpoint tidak ditemukan"})
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip('/')
+        query = parse_qs(parsed.query)
+        emp_id = query.get("id", [None])[0]
+
+        if not emp_id:
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 0:
+                body = self.rfile.read(length).decode("utf-8")
+                try:
+                    payload = json.loads(body)
+                    emp_id = payload.get("id")
+                except Exception:
+                    pass
+
+        if path == "/api/employees":
+            return self._handle_delete_employee({"id": emp_id})
         return self._send_json(404, {"success": False, "message": "Endpoint tidak ditemukan"})
 
 def main():

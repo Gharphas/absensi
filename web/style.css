@@ -778,6 +778,66 @@ body {
   color: #475569;
 }
 
+.badge-status-aktif {
+  background: var(--success-light);
+  color: #065f46;
+}
+
+.badge-status-nonaktif {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.badge-status-resign {
+  background: var(--danger-light);
+  color: #b91c1c;
+}
+
+.badge-status-cuti {
+  background: var(--info-light);
+  color: #0369a1;
+}
+
+/* ACTION BUTTONS */
+.action-btn-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-action {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-action-edit {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.btn-action-edit:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-action-delete {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.btn-action-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 /* MODAL */
 .modal-backdrop {
   position: fixed;

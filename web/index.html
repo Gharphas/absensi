@@ -300,7 +300,6 @@
             </div>
           </div>
         </div>
-        </div>
       </section>
 
       <!-- TAB: KARYAWAN -->
@@ -324,11 +323,12 @@
                   <th>Jabatan</th>
                   <th>Departemen</th>
                   <th>Status</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody id="employeeTbody">
                 <tr>
-                  <td colspan="6" class="text-center py-4">Memuat data karyawan...</td>
+                  <td colspan="7" class="text-center py-4">Memuat data karyawan...</td>
                 </tr>
               </tbody>
             </table>
@@ -373,6 +373,56 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnCancelModal">Batal</button>
           <button type="submit" class="btn btn-primary" id="btnSaveEmployee">💾 Simpan Karyawan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT KARYAWAN -->
+  <div class="modal-backdrop" id="editEmployeeModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>✏️ Edit Data Karyawan</h3>
+        <button class="btn-close" id="btnCloseEditModal">&times;</button>
+      </div>
+      <form id="editEmployeeForm">
+        <input type="hidden" id="editEmpId">
+        <div class="form-group">
+          <label for="editEmpName">Nama Lengkap Karyawan: <span style="color:red">*</span></label>
+          <input type="text" id="editEmpName" required placeholder="Contoh: Dian Sastro">
+        </div>
+        <div class="form-group">
+          <label for="editEmpNIP">Nomor Induk Pegawai (NIP): <span style="color:red">*</span></label>
+          <input type="text" id="editEmpNIP" required placeholder="Contoh: EMP001">
+        </div>
+        <div class="form-group">
+          <label for="editEmpRole">Jabatan / Role:</label>
+          <input type="text" id="editEmpRole" required placeholder="Contoh: Senior Developer">
+        </div>
+        <div class="form-group">
+          <label for="editEmpDept">Departemen / Divisi:</label>
+          <select id="editEmpDept">
+            <option value="IT">IT & Engineering</option>
+            <option value="Design">UI/UX & Creative</option>
+            <option value="Finance">Finance & Accounting</option>
+            <option value="HRD">Human Resources (HRD)</option>
+            <option value="Marketing">Sales & Marketing</option>
+            <option value="Operations">Operations</option>
+            <option value="Umum">Umum</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editEmpStatus">Status Karyawan:</label>
+          <select id="editEmpStatus">
+            <option value="Aktif">Aktif</option>
+            <option value="Non-Aktif">Non-Aktif</option>
+            <option value="Resign">Resign</option>
+            <option value="Cuti">Cuti Panjang</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEditModal">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveEditEmployee">💾 Simpan Perubahan</button>
         </div>
       </form>
     </div>

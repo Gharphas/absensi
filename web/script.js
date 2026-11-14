@@ -299,19 +299,33 @@ function renderEmployeeTable() {
   const tbody = document.getElementById('employeeTbody');
   tbody.innerHTML = '';
   if (employees.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Belum ada data karyawan.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Belum ada data karyawan.</td></tr>';
     return;
   }
 
   employees.forEach((emp, index) => {
     const tr = document.createElement('tr');
+    const status = emp.status || 'Aktif';
+    let statusClass = 'badge-status-aktif';
+    if (status === 'Non-Aktif') statusClass = 'badge-status-nonaktif';
+    else if (status === 'Resign') statusClass = 'badge-status-resign';
+    else if (status === 'Cuti') statusClass = 'badge-status-cuti';
+
+    const safeName = (emp.name || '').replace(/'/g, "\\'");
+
     tr.innerHTML = `
       <td>${index + 1}</td>
       <td><strong>${emp.nip}</strong></td>
       <td>${emp.name}</td>
       <td>${emp.role}</td>
       <td><span class="badge badge-dept">${emp.department}</span></td>
-      <td><span class="badge badge-hadir">${emp.status || 'Aktif'}</span></td>
+      <td><span class="badge ${statusClass}">${status}</span></td>
+      <td>
+        <div class="action-btn-group">
+          <button type="button" class="btn-action btn-action-edit" onclick="openEditEmployeeModal(${emp.id})">✏️ Edit</button>
+          <button type="button" class="btn-action btn-action-delete" onclick="handleDeleteEmployee(${emp.id}, '${safeName}')">🗑️ Hapus</button>
+        </div>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -648,9 +662,108 @@ function setupEventListeners() {
     }
   });
 
+  // Modal Edit Close
+  const closeEditModal = () => {
+    document.getElementById('editEmployeeModal').classList.remove('show');
+  };
+  document.getElementById('btnCloseEditModal').addEventListener('click', closeEditModal);
+  document.getElementById('btnCancelEditModal').addEventListener('click', closeEditModal);
+  document.getElementById('editEmployeeModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('editEmployeeModal')) closeEditModal();
+  });
+
+  // Submit Edit Karyawan
+  document.getElementById('editEmployeeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSave = document.getElementById('btnSaveEditEmployee');
+    const originalText = btnSave.innerHTML;
+
+    const id = document.getElementById('editEmpId').value;
+    const name = document.getElementById('editEmpName').value.trim();
+    const nip = document.getElementById('editEmpNIP').value.trim().toUpperCase();
+    const role = document.getElementById('editEmpRole').value.trim();
+    const department = document.getElementById('editEmpDept').value;
+    const status = document.getElementById('editEmpStatus').value;
+
+    if (!name) {
+      showToast('Nama karyawan tidak boleh kosong!', 'error');
+      document.getElementById('editEmpName').focus();
+      return;
+    }
+    if (!nip) {
+      showToast('NIP tidak boleh kosong!', 'error');
+      document.getElementById('editEmpNIP').focus();
+      return;
+    }
+
+    try {
+      btnSave.disabled = true;
+      btnSave.innerHTML = '⏳ Menyimpan...';
+
+      const res = await fetch('/api/employees/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, nip, role, department, status })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast(result.message, 'success');
+        closeEditModal();
+        await loadEmployees();
+        await loadAttendance();
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (err) {
+      showToast('Gagal memperbarui karyawan: ' + err.message, 'error');
+    } finally {
+      btnSave.disabled = false;
+      btnSave.innerHTML = originalText;
+    }
+  });
+
   // Export CSV
   document.getElementById('btnExportCSV').addEventListener('click', exportToCSV);
 }
+
+// Global Edit & Delete Helpers
+window.openEditEmployeeModal = function(empId) {
+  const emp = employees.find(e => Number(e.id) === Number(empId));
+  if (!emp) return;
+
+  document.getElementById('editEmpId').value = emp.id;
+  document.getElementById('editEmpName').value = emp.name;
+  document.getElementById('editEmpNIP').value = emp.nip;
+  document.getElementById('editEmpRole').value = emp.role;
+  document.getElementById('editEmpDept').value = emp.department;
+  document.getElementById('editEmpStatus').value = emp.status || 'Aktif';
+
+  document.getElementById('editEmployeeModal').classList.add('show');
+  document.getElementById('editEmpName').focus();
+};
+
+window.handleDeleteEmployee = async function(empId, empName) {
+  const ok = confirm(`Hapus karyawan "${empName}"?\n\nPERINGATAN: Seluruh rekaman absensi terkait karyawan ini juga akan dihapus dari sistem!`);
+  if (!ok) return;
+
+  try {
+    const res = await fetch('/api/employees/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: empId })
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast(result.message, 'success');
+      await loadEmployees();
+      await loadAttendance();
+    } else {
+      showToast(result.message, 'error');
+    }
+  } catch (err) {
+    showToast('Gagal menghapus karyawan: ' + err.message, 'error');
+  }
+};
 
 // 9. EXPORT CSV
 function exportToCSV() {
