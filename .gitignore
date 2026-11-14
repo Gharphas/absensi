@@ -1,0 +1,15 @@
+# Database SQLite
+*.db
+absensi.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+.vscode/
+.idea/

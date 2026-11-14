@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Absensi Karyawan Modern</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">🏢</div>
+        <div class="brand-info">
+          <h2>AbsenPro</h2>
+          <span>Manajemen Kehadiran</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#dashboard" class="menu-item active" data-tab="dashboard">
+          <span class="icon">📊</span>
+          <span>Dashboard Absensi</span>
+        </a>
+        <a href="#karyawan" class="menu-item" data-tab="karyawan">
+          <span class="icon">👥</span>
+          <span>Data Karyawan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">AD</div>
+          <div class="user-meta">
+            <strong>Admin HRD</strong>
+            <small>Administrator</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="greeting">
+          <h1 id="greetingText">Halo, Selamat Bekerja!</h1>
+          <p id="currentDateText">Memuat tanggal...</p>
+        </div>
+        <div class="clock-badge">
+          <span class="clock-icon">🕒</span>
+          <span id="digitalClock">00:00:00</span>
+        </div>
+      </header>
+
+      <!-- TAB: DASHBOARD -->
+      <section id="tab-dashboard" class="tab-pane active">
+        <!-- STATS CARDS -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon icon-total">👥</div>
+            <div class="stat-info">
+              <span class="stat-label">Total Karyawan</span>
+              <h3 id="statTotal">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon icon-hadir">✅</div>
+            <div class="stat-info">
+              <span class="stat-label">Hadir Tepat Waktu</span>
+              <h3 id="statHadir">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon icon-terlambat">⚠️</div>
+            <div class="stat-info">
+              <span class="stat-label">Terlambat (&gt;08:30)</span>
+              <h3 id="statTerlambat">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon icon-izin">📄</div>
+            <div class="stat-info">
+              <span class="stat-label">Izin / Sakit</span>
+              <h3 id="statIzin">0</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon icon-belum">⏳</div>
+            <div class="stat-info">
+              <span class="stat-label">Belum Absen</span>
+              <h3 id="statBelum">0</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-two-column">
+          <!-- FORM ABSEN CEPAT -->
+          <div class="panel form-panel">
+            <div class="panel-header">
+              <h2>⚡ Form Presensi Mandiri / Petugas</h2>
+              <p>Check-in kehadiran masuk atau check-out kepulangan</p>
+            </div>
+            <form id="attendanceForm">
+              <div class="form-group">
+                <label for="selectEmployee">Pilih Karyawan:</label>
+                <select id="selectEmployee" required>
+                  <option value="">-- Memuat Data Karyawan --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Tipe Kehadiran:</label>
+                <div class="radio-pill-group">
+                  <label class="radio-pill">
+                    <input type="radio" name="attendanceType" value="Hadir" checked>
+                    <span>🎯 Hadir</span>
+                  </label>
+                  <label class="radio-pill">
+                    <input type="radio" name="attendanceType" value="Izin">
+                    <span>📝 Izin</span>
+                  </label>
+                  <label class="radio-pill">
+                    <input type="radio" name="attendanceType" value="Sakit">
+                    <span>🩺 Sakit</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="absenNotes">Catatan / Keterangan (Opsional):</label>
+                <input type="text" id="absenNotes" placeholder="Contoh: Sakit flu, tugas dinas luar, dll.">
+              </div>
+
+              <div class="form-actions-dual">
+                <button type="submit" class="btn btn-primary" id="btnCheckIn">
+                  <span>📥 Check-In Masuk</span>
+                </button>
+                <button type="button" class="btn btn-secondary" id="btnCheckOut">
+                  <span>📤 Check-Out Pulang</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- KETERANGAN ATURAN ABSEN -->
+          <div class="panel info-panel">
+            <div class="panel-header">
+              <h2>📌 Ketentuan Jam Kerja</h2>
+            </div>
+            <ul class="rules-list">
+              <li>
+                <strong>07:00 - 08:30</strong>
+                <span>Presensi Masuk Tepat Waktu</span>
+              </li>
+              <li>
+                <strong>&gt; 08:30</strong>
+                <span class="text-warning">Otomatis terhitung Terlambat</span>
+              </li>
+              <li>
+                <strong>17:00 - 21:00</strong>
+                <span>Waktu Check-Out Kepulangan</span>
+              </li>
+              <li>
+                <strong>Izin / Sakit</strong>
+                <span>Pilih jenis kehadiran & isi catatan surat keterangan</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- TABEL REKAP KEHADIRAN -->
+        <div class="panel table-panel">
+          <div class="panel-header flex-header">
+            <div>
+              <h2>📋 Data Absensi Karyawan</h2>
+              <p>Daftar presensi harian secara real-time</p>
+            </div>
+            <div class="controls-group">
+              <input type="date" id="filterDate" class="input-control">
+              <input type="text" id="searchAttendance" placeholder="Cari nama / NIP..." class="input-control">
+              <button class="btn btn-outline" id="btnExportCSV">📥 Export CSV</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="tableAttendance">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>NIP</th>
+                  <th>Nama Karyawan</th>
+                  <th>Divisi</th>
+                  <th>Check-In</th>
+                  <th>Check-Out</th>
+                  <th>Status</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTbody">
+                <tr>
+                  <td colspan="8" class="text-center py-4">Memuat data absensi...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: KARYAWAN -->
+      <section id="tab-karyawan" class="tab-pane">
+        <div class="panel table-panel">
+          <div class="panel-header flex-header">
+            <div>
+              <h2>👥 Master Data Karyawan</h2>
+              <p>Daftar seluruh pegawai aktif di perusahaan</p>
+            </div>
+            <button class="btn btn-primary" id="btnOpenModalEmployee">➕ Tambah Karyawan</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>NIP</th>
+                  <th>Nama Lengkap</th>
+                  <th>Jabatan</th>
+                  <th>Departemen</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="employeeTbody">
+                <tr>
+                  <td colspan="6" class="text-center py-4">Memuat data karyawan...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL TAMBAH KARYAWAN -->
+  <div class="modal-backdrop" id="employeeModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Tambah Karyawan Baru</h3>
+        <button class="btn-close" id="btnCloseModal">&times;</button>
+      </div>
+      <form id="addEmployeeForm">
+        <div class="form-group">
+          <label for="empNIP">Nomor Induk Pegawai (NIP):</label>
+          <input type="text" id="empNIP" required placeholder="Contoh: EMP006">
+        </div>
+        <div class="form-group">
+          <label for="empName">Nama Lengkap:</label>
+          <input type="text" id="empName" required placeholder="Contoh: Dian Sastro">
+        </div>
+        <div class="form-group">
+          <label for="empRole">Jabatan / Role:</label>
+          <input type="text" id="empRole" required placeholder="Contoh: Backend Developer">
+        </div>
+        <div class="form-group">
+          <label for="empDept">Departemen / Divisi:</label>
+          <select id="empDept" required>
+            <option value="IT">IT & Engineering</option>
+            <option value="Design">UI/UX & Creative</option>
+            <option value="Finance">Finance & Accounting</option>
+            <option value="HRD">Human Resources (HRD)</option>
+            <option value="Marketing">Sales & Marketing</option>
+            <option value="Operations">Operations</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Karyawan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
