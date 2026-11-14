@@ -107,7 +107,12 @@
             </div>
             <form id="attendanceForm">
               <div class="form-group">
-                <label for="selectEmployee">Pilih Karyawan:</label>
+                <div class="label-with-action">
+                  <label for="selectEmployee">Pilih Karyawan:</label>
+                  <button type="button" class="btn-text-action" id="btnQuickAddEmployee">
+                    ➕ Tambah Karyawan Baru
+                  </button>
+                </div>
                 <select id="selectEmployee" required>
                   <option value="">-- Memuat Data Karyawan --</option>
                 </select>
@@ -255,31 +260,32 @@
       </div>
       <form id="addEmployeeForm">
         <div class="form-group">
-          <label for="empNIP">Nomor Induk Pegawai (NIP):</label>
-          <input type="text" id="empNIP" required placeholder="Contoh: EMP006">
+          <label for="empName">Nama Lengkap Karyawan: <span style="color:red">*</span></label>
+          <input type="text" id="empName" required placeholder="Contoh: Dian Sastrowardoyo">
         </div>
         <div class="form-group">
-          <label for="empName">Nama Lengkap:</label>
-          <input type="text" id="empName" required placeholder="Contoh: Dian Sastro">
+          <label for="empNIP">Nomor Induk Pegawai (NIP): <small style="color:var(--text-muted)">(Opsional / Otomatis dibuat)</small></label>
+          <input type="text" id="empNIP" placeholder="Biarkan kosong untuk otomatis (misal: EMP006)">
         </div>
         <div class="form-group">
-          <label for="empRole">Jabatan / Role:</label>
-          <input type="text" id="empRole" required placeholder="Contoh: Backend Developer">
+          <label for="empRole">Jabatan / Posisi:</label>
+          <input type="text" id="empRole" placeholder="Contoh: Staff Operasional (default: Staf)">
         </div>
         <div class="form-group">
           <label for="empDept">Departemen / Divisi:</label>
-          <select id="empDept" required>
+          <select id="empDept">
             <option value="IT">IT & Engineering</option>
             <option value="Design">UI/UX & Creative</option>
             <option value="Finance">Finance & Accounting</option>
             <option value="HRD">Human Resources (HRD)</option>
             <option value="Marketing">Sales & Marketing</option>
             <option value="Operations">Operations</option>
+            <option value="Umum" selected>Umum</option>
           </select>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnCancelModal">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Karyawan</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveEmployee">💾 Simpan Karyawan</button>
         </div>
       </form>
     </div>

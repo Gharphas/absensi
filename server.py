@@ -8,8 +8,9 @@ from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
 
 PORT = 5000
-DB_FILE = os.path.join(os.path.dirname(__file__), "absensi.db")
-WEB_DIR = os.path.join(os.path.dirname(__file__), "web")
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_FILE = os.path.join(BASE_DIR, "absensi.db")
+WEB_DIR = os.path.join(BASE_DIR, "web")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -71,6 +72,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Pastikan DB selalu terinisialisasi saat server.py dimuat
+init_db()
+
 class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
@@ -93,7 +97,9 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        path = parsed.path
+        path = parsed.path.rstrip('/')
+        if not path:
+            path = "/"
         query = parse_qs(parsed.query)
 
         if path == "/api/employees":
@@ -160,7 +166,7 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
-        path = parsed.path
+        path = parsed.path.rstrip('/')
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
         try:
@@ -244,25 +250,55 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
             })
 
         elif path == "/api/employees":
-            nip = payload.get("nip")
-            name = payload.get("name")
-            role = payload.get("role")
-            dept = payload.get("department")
+            name = (payload.get("name") or "").strip()
+            nip = (payload.get("nip") or "").strip().upper()
+            role = (payload.get("role") or "Staf").strip()
+            dept = (payload.get("department") or "Umum").strip()
 
-            if not (nip and name and role and dept):
-                return self._send_json(400, {"success": False, "message": "Semua field karyawan wajib diisi"})
+            if not name:
+                return self._send_json(400, {"success": False, "message": "Nama karyawan wajib diisi!"})
 
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
+
+            # Jika NIP kosong, otomatis buatkan NIP unik
+            if not nip:
+                cursor.execute("SELECT MAX(id) FROM employees")
+                max_id = cursor.fetchone()[0] or 0
+                nip = f"EMP{max_id + 1:03d}"
+                # Pastikan tidak tabrakan
+                while True:
+                    cursor.execute("SELECT id FROM employees WHERE nip = ?", (nip,))
+                    if not cursor.fetchone():
+                        break
+                    max_id += 1
+                    nip = f"EMP{max_id + 1:03d}"
+
             try:
-                cursor.execute("INSERT INTO employees (nip, name, role, department) VALUES (?, ?, ?, ?)", (nip, name, role, dept))
+                cursor.execute(
+                    "INSERT INTO employees (nip, name, role, department, status) VALUES (?, ?, ?, ?, 'Aktif')",
+                    (nip, name, role, dept)
+                )
                 conn.commit()
                 emp_id = cursor.lastrowid
                 conn.close()
-                return self._send_json(200, {"success": True, "message": "Karyawan berhasil ditambahkan", "id": emp_id})
+                return self._send_json(200, {
+                    "success": True, 
+                    "message": f"Karyawan '{name}' ({nip}) berhasil ditambahkan!",
+                    "data": {
+                        "id": emp_id,
+                        "nip": nip,
+                        "name": name,
+                        "role": role,
+                        "department": dept
+                    }
+                })
             except sqlite3.IntegrityError:
                 conn.close()
-                return self._send_json(400, {"success": False, "message": "NIP sudah terdaftar!"})
+                return self._send_json(400, {"success": False, "message": f"NIP '{nip}' sudah terdaftar, gunakan NIP lain!"})
+            except Exception as e:
+                conn.close()
+                return self._send_json(500, {"success": False, "message": f"Terjadi kesalahan database: {str(e)}"})
 
         return self._send_json(404, {"success": False, "message": "Endpoint tidak ditemukan"})
 

@@ -252,25 +252,57 @@ function setupEventListeners() {
 
   // Modal Tambah Karyawan
   const modal = document.getElementById('employeeModal');
-  document.getElementById('btnOpenModalEmployee').addEventListener('click', () => {
+  const openModal = () => {
+    // Generate rekomendasi NIP berikutnya
+    const nextNum = employees.length + 1;
+    const suggestedNIP = `EMP${String(nextNum).padStart(3, '0')}`;
+    const nipInput = document.getElementById('empNIP');
+    if (!nipInput.value) {
+      nipInput.placeholder = `Otomatis: ${suggestedNIP}`;
+    }
     modal.classList.add('show');
-  });
-  document.getElementById('btnCloseModal').addEventListener('click', () => {
+    document.getElementById('empName').focus();
+  };
+
+  const closeModal = () => {
     modal.classList.remove('show');
-  });
-  document.getElementById('btnCancelModal').addEventListener('click', () => {
-    modal.classList.remove('show');
+  };
+
+  const btnOpenModal = document.getElementById('btnOpenModalEmployee');
+  if (btnOpenModal) btnOpenModal.addEventListener('click', openModal);
+
+  const btnQuickAdd = document.getElementById('btnQuickAddEmployee');
+  if (btnQuickAdd) btnQuickAdd.addEventListener('click', openModal);
+
+  document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+  document.getElementById('btnCancelModal').addEventListener('click', closeModal);
+
+  // Klik di luar box modal untuk menutup
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
   });
 
   // Submit Tambah Karyawan
   document.getElementById('addEmployeeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btnSave = document.getElementById('btnSaveEmployee');
+    const originalText = btnSave.innerHTML;
+    
     const nip = document.getElementById('empNIP').value.trim();
     const name = document.getElementById('empName').value.trim();
     const role = document.getElementById('empRole').value.trim();
     const department = document.getElementById('empDept').value;
 
+    if (!name) {
+      showToast('Nama karyawan wajib diisi!', 'error');
+      document.getElementById('empName').focus();
+      return;
+    }
+
     try {
+      btnSave.disabled = true;
+      btnSave.innerHTML = '⏳ Menyimpan...';
+
       const res = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,15 +311,25 @@ function setupEventListeners() {
       const result = await res.json();
       if (result.success) {
         showToast(result.message, 'success');
-        modal.classList.remove('show');
+        closeModal();
         document.getElementById('addEmployeeForm').reset();
         await loadEmployees();
+        
+        // Otomatis pilih karyawan baru di dropdown form absensi
+        if (result.data && result.data.id) {
+          const select = document.getElementById('selectEmployee');
+          if (select) select.value = result.data.id;
+        }
+
         await loadAttendance();
       } else {
         showToast(result.message, 'error');
       }
     } catch (err) {
       showToast('Gagal menambah karyawan: ' + err.message, 'error');
+    } finally {
+      btnSave.disabled = false;
+      btnSave.innerHTML = originalText;
     }
   });
 
