@@ -169,44 +169,85 @@ class AbsensiHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(200, {"success": True, "data": rows})
 
         elif path == "/api/attendance":
-            target_date = query.get("date", [date.today().strftime("%Y-%m-%d")])[0]
+            target_month = query.get("month", [None])[0]
+            target_date = query.get("date", [None])[0]
+            
+            is_monthly = bool(target_month)
+            if not target_month and not target_date:
+                target_date = date.today().strftime("%Y-%m-%d")
+
             conn = sqlite3.connect(DB_FILE)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            query_sql = """
-                SELECT a.id, a.employee_id, e.nip, e.name, e.department, e.role,
-                       a.date, a.check_in, a.check_out, a.status, a.notes,
-                       a.photo_in, a.photo_out, a.work_duration, a.overtime
-                FROM attendance a
-                JOIN employees e ON a.employee_id = e.id
-                WHERE a.date = ?
-                ORDER BY a.id DESC
-            """
-            cursor.execute(query_sql, (target_date,))
-            rows = [dict(row) for row in cursor.fetchall()]
 
-            # Hitung rekap
-            cursor.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-                    SUM(CASE WHEN status = 'Terlambat' THEN 1 ELSE 0 END) as terlambat,
-                    SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-                    SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-                    SUM(CASE WHEN overtime IS NOT NULL AND overtime != '-' THEN 1 ELSE 0 END) as lembur
-                FROM attendance
-                WHERE date = ?
-            """, (target_date,))
-            summary_row = dict(cursor.fetchone())
-            cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'Aktif'")
-            total_karyawan = cursor.fetchone()[0]
-            summary_row["total_karyawan"] = total_karyawan
-            summary_row["belum_hadir"] = max(0, total_karyawan - (summary_row["total"] or 0))
+            if is_monthly:
+                query_sql = """
+                    SELECT a.id, a.employee_id, e.nip, e.name, e.department, e.role,
+                           a.date, a.check_in, a.check_out, a.status, a.notes,
+                           a.photo_in, a.photo_out, a.work_duration, a.overtime
+                    FROM attendance a
+                    JOIN employees e ON a.employee_id = e.id
+                    WHERE a.date LIKE ?
+                    ORDER BY a.date DESC, a.id DESC
+                """
+                cursor.execute(query_sql, (f"{target_month}%",))
+                rows = [dict(row) for row in cursor.fetchall()]
+
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+                        SUM(CASE WHEN status = 'Terlambat' THEN 1 ELSE 0 END) as terlambat,
+                        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+                        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+                        SUM(CASE WHEN overtime IS NOT NULL AND overtime != '-' THEN 1 ELSE 0 END) as lembur
+                    FROM attendance
+                    WHERE date LIKE ?
+                """, (f"{target_month}%",))
+                summary_row = dict(cursor.fetchone())
+                cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'Aktif'")
+                total_karyawan = cursor.fetchone()[0]
+                summary_row["total_karyawan"] = total_karyawan
+                summary_row["belum_hadir"] = "-"
+                period_label = f"Bulan {target_month}"
+            else:
+                query_sql = """
+                    SELECT a.id, a.employee_id, e.nip, e.name, e.department, e.role,
+                           a.date, a.check_in, a.check_out, a.status, a.notes,
+                           a.photo_in, a.photo_out, a.work_duration, a.overtime
+                    FROM attendance a
+                    JOIN employees e ON a.employee_id = e.id
+                    WHERE a.date = ?
+                    ORDER BY a.id DESC
+                """
+                cursor.execute(query_sql, (target_date,))
+                rows = [dict(row) for row in cursor.fetchall()]
+
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+                        SUM(CASE WHEN status = 'Terlambat' THEN 1 ELSE 0 END) as terlambat,
+                        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+                        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+                        SUM(CASE WHEN overtime IS NOT NULL AND overtime != '-' THEN 1 ELSE 0 END) as lembur
+                    FROM attendance
+                    WHERE date = ?
+                """, (target_date,))
+                summary_row = dict(cursor.fetchone())
+                cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'Aktif'")
+                total_karyawan = cursor.fetchone()[0]
+                summary_row["total_karyawan"] = total_karyawan
+                summary_row["belum_hadir"] = max(0, total_karyawan - (summary_row["total"] or 0))
+                period_label = target_date
 
             conn.close()
             return self._send_json(200, {
                 "success": True, 
                 "date": target_date,
+                "month": target_month,
+                "is_monthly": is_monthly,
+                "period_label": period_label,
                 "summary": summary_row,
                 "data": rows
             })

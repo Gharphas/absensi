@@ -222,15 +222,37 @@
 
         <!-- TABEL REKAP KEHADIRAN -->
         <div class="panel table-panel">
-          <div class="panel-header flex-header">
+          <!-- KOP SURAT KHUSUS CETAK PDF -->
+          <div class="print-only print-header">
+            <div class="print-brand">
+              <h2>PT. NUSANTARA KARYA TEKNOLOGI</h2>
+              <p>Gedung Menara Sentra Lt. 15, Jl. Jend. Sudirman Kav. 54, Jakarta</p>
+              <p>Telp: (021) 555-0199 | Email: hrd@nusantara-tech.co.id</p>
+            </div>
+            <hr class="print-divider">
+            <h3 class="print-title">LAPORAN REKAPITULASI PRESENSI KARYAWAN</h3>
+            <div class="print-meta-row">
+              <span id="printPeriodText">Periode: -</span>
+              <span id="printGeneratedText">Dicetak pada: -</span>
+            </div>
+            <div class="print-stats-summary" id="printStatsSummary"></div>
+          </div>
+
+          <div class="panel-header flex-header no-print">
             <div>
-              <h2>📋 Data Absensi Karyawan</h2>
-              <p>Daftar presensi harian secara real-time</p>
+              <h2 id="tableSectionTitle">📋 Data Absensi Karyawan</h2>
+              <p id="tableSectionSub">Daftar presensi harian & bulanan secara real-time</p>
             </div>
             <div class="controls-group">
+              <div class="filter-mode-toggle">
+                <button type="button" class="btn-filter-toggle active" id="btnModeHarian">Harian</button>
+                <button type="button" class="btn-filter-toggle" id="btnModeBulanan">Bulanan</button>
+              </div>
               <input type="date" id="filterDate" class="input-control">
+              <input type="month" id="filterMonth" class="input-control" style="display: none;">
               <input type="text" id="searchAttendance" placeholder="Cari nama / NIP..." class="input-control">
               <button class="btn btn-outline" id="btnExportCSV">📥 Export CSV</button>
+              <button class="btn btn-print" id="btnPrintPDF">🖨️ Cetak PDF</button>
             </div>
           </div>
 
@@ -239,7 +261,8 @@
               <thead>
                 <tr>
                   <th>No</th>
-                  <th>Foto</th>
+                  <th class="col-foto">Foto</th>
+                  <th class="col-tanggal" style="display: none;">Tanggal</th>
                   <th>NIP</th>
                   <th>Nama Karyawan</th>
                   <th>Divisi</th>
@@ -253,11 +276,30 @@
               </thead>
               <tbody id="attendanceTbody">
                 <tr>
-                  <td colspan="11" class="text-center py-4">Memuat data absensi...</td>
+                  <td colspan="12" class="text-center py-4">Memuat data absensi...</td>
                 </tr>
               </tbody>
             </table>
           </div>
+
+          <!-- KOLOM TANDA TANGAN KHUSUS CETAK PDF -->
+          <div class="print-only print-footer">
+            <div class="signature-grid">
+              <div class="sig-box">
+                <p>Dibuat Oleh,</p>
+                <div class="sig-space"></div>
+                <div class="sig-line"></div>
+                <strong>Staff HRD / Admin</strong>
+              </div>
+              <div class="sig-box">
+                <p>Mengetahui,</p>
+                <div class="sig-space"></div>
+                <div class="sig-line"></div>
+                <strong>Head of Human Resources</strong>
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
       </section>
 

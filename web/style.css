@@ -865,6 +865,191 @@ body {
 .toast.success { background: #065f46; border-left: 5px solid #10b981; }
 .toast.error { background: #991b1b; border-left: 5px solid #ef4444; }
 
+/* FILTER MODE TOGGLE */
+.filter-mode-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  border: 1px solid var(--border);
+}
+
+.btn-filter-toggle {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-filter-toggle.active {
+  background: #fff;
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-print {
+  background: #0284c7;
+  color: #fff;
+}
+
+.btn-print:hover {
+  background: #0369a1;
+}
+
+/* PRINT-ONLY ELEMENT (HIDDEN ON SCREEN) */
+.print-only {
+  display: none;
+}
+
+/* @MEDIA PRINT (KHUSUS CETAK PDF & KERTAS) */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt;
+  }
+
+  .sidebar,
+  .topbar,
+  .stats-grid,
+  .grid-two-column,
+  .no-print,
+  .modal-backdrop,
+  .toast,
+  .camera-form-group,
+  .col-foto,
+  .table-photo-thumb,
+  .table-photo-empty {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .panel {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* KOP SURAT */
+  .print-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .print-brand h2 {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+  }
+
+  .print-brand p {
+    font-size: 8.5pt;
+    color: #475569;
+    margin-top: 2px;
+  }
+
+  .print-divider {
+    border: none;
+    border-top: 2px solid #000;
+    margin: 10px 0 14px;
+  }
+
+  .print-title {
+    font-size: 13pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .print-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9pt;
+    color: #334155;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed #cbd5e1;
+  }
+
+  .print-stats-summary {
+    display: flex;
+    justify-content: space-around;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    margin-bottom: 16px;
+    font-size: 8.5pt;
+  }
+
+  /* TABEL CETAK */
+  .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+
+  .data-table th,
+  .data-table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+    color: #000 !important;
+  }
+
+  .data-table th {
+    background: #f1f5f9 !important;
+    font-weight: 700 !important;
+  }
+
+  .badge {
+    border: 1px solid #94a3b8 !important;
+    padding: 2px 6px !important;
+    background: transparent !important;
+    color: #000 !important;
+  }
+
+  /* TANDA TANGAN */
+  .print-footer {
+    margin-top: 35px;
+    page-break-inside: avoid;
+  }
+
+  .signature-grid {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+  }
+
+  .sig-box {
+    text-align: center;
+    width: 200px;
+  }
+
+  .sig-space {
+    height: 65px;
+  }
+
+  .sig-line {
+    border-top: 1px solid #000;
+    margin-bottom: 4px;
+  }
+}
+
 /* RESPONSIVE */
 @media (max-width: 992px) {
   .sidebar {

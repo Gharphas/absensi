@@ -2,6 +2,9 @@
 let employees = [];
 let attendanceData = [];
 let currentTab = 'dashboard';
+let filterMode = 'harian'; // 'harian' atau 'bulanan'
+let currentSummary = null;
+let currentPeriodLabel = '';
 
 // State Kamera WebCam
 let mediaStream = null;
@@ -67,15 +70,53 @@ function initNavigation() {
   });
 }
 
-// 3. FILTER DATE
+// 3. FILTER DATE & MODE (HARIAN / BULANAN)
 function initFilterDate() {
   const dateInput = document.getElementById('filterDate');
-  const today = new Date().toISOString().split('T')[0];
+  const monthInput = document.getElementById('filterMonth');
+  const btnHarian = document.getElementById('btnModeHarian');
+  const btnBulanan = document.getElementById('btnModeBulanan');
+  const colTanggal = document.querySelector('.col-tanggal');
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const thisMonth = today.slice(0, 7);
+
   dateInput.value = today;
+  monthInput.value = thisMonth;
+
+  btnHarian.addEventListener('click', () => {
+    filterMode = 'harian';
+    btnHarian.classList.add('active');
+    btnBulanan.classList.remove('active');
+    dateInput.style.display = 'inline-block';
+    monthInput.style.display = 'none';
+    if (colTanggal) colTanggal.style.display = 'none';
+    document.getElementById('tableSectionTitle').textContent = '📋 Data Absensi Karyawan (Harian)';
+    loadAttendance();
+  });
+
+  btnBulanan.addEventListener('click', () => {
+    filterMode = 'bulanan';
+    btnBulanan.classList.add('active');
+    btnHarian.classList.remove('active');
+    dateInput.style.display = 'none';
+    monthInput.style.display = 'inline-block';
+    if (colTanggal) colTanggal.style.display = '';
+    document.getElementById('tableSectionTitle').textContent = '📋 Rekapitulasi Absensi Bulanan';
+    loadAttendance();
+  });
 
   dateInput.addEventListener('change', () => {
-    loadAttendance(dateInput.value);
+    if (filterMode === 'harian') loadAttendance();
   });
+
+  monthInput.addEventListener('change', () => {
+    if (filterMode === 'bulanan') loadAttendance();
+  });
+
+  // Tombol Cetak PDF
+  document.getElementById('btnPrintPDF').addEventListener('click', handlePrintPDF);
 }
 
 // 4. WEBCAM / KAMERA SELFIE
@@ -277,13 +318,23 @@ function renderEmployeeTable() {
 }
 
 // 6. LOAD ATTENDANCE
-async function loadAttendance(dateStr) {
-  const targetDate = dateStr || document.getElementById('filterDate').value;
+async function loadAttendance() {
+  let url = '/api/attendance';
+  if (filterMode === 'bulanan') {
+    const monthVal = document.getElementById('filterMonth').value;
+    url += `?month=${monthVal}`;
+  } else {
+    const dateVal = document.getElementById('filterDate').value;
+    url += `?date=${dateVal}`;
+  }
+
   try {
-    const res = await fetch(`/api/attendance?date=${targetDate}`);
+    const res = await fetch(url);
     const data = await res.json();
     if (data.success) {
       attendanceData = data.data;
+      currentSummary = data.summary;
+      currentPeriodLabel = data.period_label || (filterMode === 'bulanan' ? document.getElementById('filterMonth').value : document.getElementById('filterDate').value);
       updateStats(data.summary);
       renderAttendanceTable(attendanceData);
     }
@@ -307,15 +358,22 @@ function renderAttendanceTable(list) {
   const tbody = document.getElementById('attendanceTbody');
   tbody.innerHTML = '';
 
+  const colTanggal = document.querySelector('.col-tanggal');
+  if (colTanggal) {
+    colTanggal.style.display = filterMode === 'bulanan' ? '' : 'none';
+  }
+
   const query = document.getElementById('searchAttendance').value.toLowerCase();
   const filtered = list.filter(item => 
     item.name.toLowerCase().includes(query) || 
     item.nip.toLowerCase().includes(query) ||
-    item.department.toLowerCase().includes(query)
+    item.department.toLowerCase().includes(query) ||
+    (item.date && item.date.includes(query))
   );
 
+  const colCount = filterMode === 'bulanan' ? 12 : 11;
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk kriteria ini.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center; padding: 20px; color: #94a3b8;">Belum ada rekaman absensi untuk periode ini.</td></tr>`;
     return;
   }
 
@@ -339,9 +397,14 @@ function renderAttendanceTable(list) {
       ? `<span class="badge badge-overtime">🔥 ${row.overtime}</span>`
       : `<span style="color:#94a3b8">-</span>`;
 
+    const dateColHtml = filterMode === 'bulanan'
+      ? `<td><small style="font-weight:700;color:#64748b;">${row.date || '-'}</small></td>`
+      : '';
+
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${photoThumb}</td>
+      <td class="col-foto">${photoThumb}</td>
+      ${dateColHtml}
       <td><strong>${row.nip}</strong></td>
       <td>${row.name}</td>
       <td><span class="badge badge-dept">${row.department}</span></td>
@@ -354,6 +417,39 @@ function renderAttendanceTable(list) {
     `;
     tbody.appendChild(tr);
   });
+}
+
+// 7. PRINT PDF
+function handlePrintPDF() {
+  if (attendanceData.length === 0) {
+    showToast('Tidak ada data absensi untuk dicetak!', 'error');
+    return;
+  }
+
+  const periodText = document.getElementById('printPeriodText');
+  const genText = document.getElementById('printGeneratedText');
+  const statsSummary = document.getElementById('printStatsSummary');
+
+  const now = new Date();
+  const timeStr = now.toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  periodText.textContent = `Periode: ${currentPeriodLabel || '-'}`;
+  genText.textContent = `Dicetak: ${timeStr} WIB`;
+
+  if (currentSummary) {
+    statsSummary.innerHTML = `
+      <span>Total Rekaman: <b>${currentSummary.total || 0}</b></span>
+      <span>Hadir: <b>${currentSummary.hadir || 0}</b></span>
+      <span>Terlambat: <b>${currentSummary.terlambat || 0}</b></span>
+      <span>Izin/Sakit: <b>${(currentSummary.izin || 0) + (currentSummary.sakit || 0)}</b></span>
+      <span>Lembur: <b>${currentSummary.lembur || 0}</b></span>
+    `;
+  }
+
+  window.print();
 }
 
 // 7. VIEW PHOTO MODAL
@@ -563,19 +659,22 @@ function exportToCSV() {
     return;
   }
 
-  const dateVal = document.getElementById('filterDate').value;
-  let csv = 'No,NIP,Nama Karyawan,Departemen,Check-In,Check-Out,Durasi Kerja,Lembur,Status,Keterangan\n';
+  const periodLabel = filterMode === 'bulanan'
+    ? document.getElementById('filterMonth').value
+    : document.getElementById('filterDate').value;
+
+  let csv = 'No,Tanggal,NIP,Nama Karyawan,Departemen,Check-In,Check-Out,Durasi Kerja,Lembur,Status,Keterangan\n';
 
   attendanceData.forEach((row, i) => {
     const cleanNotes = (row.notes || '').replace(/,/g, ' ');
-    csv += `${i + 1},${row.nip},"${row.name}","${row.department}",${row.check_in || '-'},${row.check_out || '-'},"${row.work_duration || '-'}","${row.overtime || '-'}",${row.status},"${cleanNotes}"\n`;
+    csv += `${i + 1},${row.date || '-'},${row.nip},"${row.name}","${row.department}",${row.check_in || '-'},${row.check_out || '-'},"${row.work_duration || '-'}","${row.overtime || '-'}",${row.status},"${cleanNotes}"\n`;
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `absensi_karyawan_${dateVal}.csv`;
+  a.download = `rekap_absensi_${filterMode}_${periodLabel}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
